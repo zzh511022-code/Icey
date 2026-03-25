@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<!-- H5关键：禁止缩放、安全区适配 -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>词汇充能游戏 · Vocab Energy</title>
+<style>
+  *, *::before, *::after { -webkit-box-sizing: border-box; box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --color-bg: #0a0a12;
+    --color-accent: #00cfff;
+    --color-gold: #ffd700;
+    --battery-w: 56px;
+    --battery-h: 120px;
+    --word-color: #e0e8ff;
+  }
+  html, body { height: 100%; }
+  body {
+    /* 系统字体栈：兼容iOS/Android */
+    font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', 'Segoe UI', sans-serif;
+    background: var(--color-bg);
+    color: #fff;
+    min-height: 100vh;
+    overflow: hidden;
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-box-orient: vertical;
+    -webkit-box-direction: normal;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+    -webkit-box-align: center;
+    -webkit-align-items: center;
+    align-items: center;
+    -webkit-box-pack: center;
+    -webkit-justify-content: center;
+    justify-content: center;
+    /* iOS安全区 */
+    padding-bottom: env(safe-area-inset-bottom);
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* 禁止长按菜单 */
+  img { -webkit-touch-callout: none; pointer-events: none; }
+
+  /* 消除按钮点击蓝色高亮 */
+  button, label { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+
+  #fireworks-canvas {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0; /* inset:0 兼容写法 */
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ===== SETTINGS BUTTON ===== */
+  #settings-btn {
+    position: fixed; top: 16px; right: 16px;
+    width: 44px; height: 44px; /* 移动端最小点击区 44px */
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 50%;
+    color: #aaa; font-size: 18px;
+    cursor: pointer;
+    display: -webkit-box; display: -webkit-flex; display: flex;
+    -webkit-box-align: center; -webkit-align-items: center; align-items: center;
+    -webkit-box-pack: center; -webkit-justify-content: center; justify-content: center;
+    -webkit-transition: background .2s; transition: background .2s;
+    z-index: 200;
+  }
+  #settings-btn:hover { background: rgba(255,255,255,0.18); color: #fff; }
+
+  /* ===== SETTINGS PANEL ===== */
+  #settings-panel {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.85);
+    /* backdrop-filter加webkit前缀 */
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: none;
+    -webkit-box-align: center; -webkit-align-items: center; align-items: center;
+    -webkit-box-pack: center; -webkit-justify-content: center; justify-content: center;
+    overflow-y: auto;
+  }
+  #settings-panel.open { display: -webkit-box; display: -webkit-flex; display: flex; }
+  .settings-box {
+    background: #16162a;
+    border: 1px solid rgba(0,207,255,0.25);
+    border-radius: 16px;
+    padding: 24px 20px;
+    width: 96vw;          /* clamp(680px,96vw) → 简化 */
+    max-width: 680px;
+    max-height: 88vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch; /* iOS惯性滚动 */
+  }
+  .settings-box h2 { font-size: 1rem; color: var(--color-accent); margin-bottom: 18px; letter-spacing: 1px; }
+  .settings-grid { display: -webkit-box; display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; gap: 14px; }
+  .settings-group { background: rgba(255,255,255,0.04); border-radius: 10px; padding: 13px 14px; -webkit-box-flex: 1; -webkit-flex: 1 1 260px; flex: 1 1 260px; }
+  .settings-group.full { -webkit-box-flex: 0; -webkit-flex: 0 0 100%; flex: 0 0 100%; }
+  .settings-group label { display: block; font-size: .78rem; color: #aaa; margin-bottom: 6px; letter-spacing: .5px; }
+  .settings-group input[type="text"],
+  .settings-group input[type="color"] {
+    width: 100%; background: #0d0d1a;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 6px; color: #fff;
+    padding: 8px 10px; font-size: .9rem;
+    -webkit-appearance: none; appearance: none;
+  }
+  .settings-group input[type="color"] { height: 38px; padding: 2px 4px; cursor: pointer; }
+  .file-upload-row { display: -webkit-box; display: -webkit-flex; display: flex; gap: 8px; margin-top: 4px; }
+  .file-btn {
+    -webkit-box-flex: 1; -webkit-flex: 1; flex: 1;
+    padding: 10px 4px;
+    background: rgba(0,207,255,0.1);
+    border: 1px dashed rgba(0,207,255,0.35);
+    border-radius: 8px;
+    color: var(--color-accent); font-size: .78rem;
+    cursor: pointer; text-align: center;
+    -webkit-transition: background .2s; transition: background .2s;
+    position: relative; overflow: hidden;
+  }
+  .file-btn:hover, .file-btn:active { background: rgba(0,207,255,0.2); }
+  .file-btn.has-file { border-color: #4ade80; color: #4ade80; background: rgba(74,222,128,0.08); }
+  .file-btn input[type="file"] { position: absolute; top:0;left:0;right:0;bottom:0; opacity: 0; cursor: pointer; }
+  .file-btn span { display: block; pointer-events: none; }
+  .slot-label { font-size: .7rem; color: #666; margin-top: 4px; }
+  .settings-actions {
+    display: -webkit-box; display: -webkit-flex; display: flex;
+    gap: 8px; margin-top: 18px;
+    -webkit-box-pack: end; -webkit-justify-content: flex-end; justify-content: flex-end;
+    -webkit-flex-wrap: wrap; flex-wrap: wrap;
+  }
+  .btn-primary {
+    padding: 10px 20px;
+    background: -webkit-linear-gradient(135deg, #00cfff, #7c3aed);
+    background: linear-gradient(135deg, #00cfff, #7c3aed);
+    border: none; border-radius: 8px;
+    color: #fff; font-size: .9rem; cursor: pointer; font-weight: 600;
+  }
+  .btn-export {
+    padding: 10px 20px;
+    background: -webkit-linear-gradient(135deg, #16a34a, #15803d);
+    background: linear-gradient(135deg, #16a34a, #15803d);
+    border: none; border-radius: 8px;
+    color: #fff; font-size: .9rem; cursor: pointer; font-weight: 600;
+  }
+  .btn-export:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-secondary {
+    padding: 10px 18px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px; color: #bbb; font-size: .9rem; cursor: pointer;
+  }
+  .export-note { font-size: .72rem; color: #555; margin-top: 8px; line-height: 1.5; width: 100%; }
+
+  /* ===== GAME ROOT ===== */
+  #game-root {
+    display: -webkit-box; display: -webkit-flex; display: flex;
+    -webkit-box-orient: vertical; -webkit-box-direction: normal; -webkit-flex-direction: column; flex-direction: column;
+    -webkit-box-align: center; -webkit-align-items: center; align-items: center;
+    gap: 20px;
+    width: 100%; max-width: 860px;
+    padding: 16px;
+  }
+
+  /* ===== WORD SLOT ===== */
+  #word-slot {
+    font-size: 11vw;       /* clamp替代：基于vw，下方媒体查询限制最大 */
+    font-weight: 900; letter-spacing: 6px; text-transform: uppercase;
+    color: var(--word-color);
+    text-shadow: 0 0 30px rgba(0,207,255,.4);
+    -webkit-user-select: none; user-select: none;
+  }
+  @media (min-width: 400px){ #word-slot { font-size: 2.8rem; } }
+  @media (min-width: 600px){ #word-slot { font-size: 3.5rem; } }
+  @media (min-width: 800px){ #word-slot { font-size: 4rem;   } }
+
+  #word-slot.bounce  { -webkit-animation: wordBounce .35s ease-out; animation: wordBounce .35s ease-out; }
+  #word-slot.wave    { -webkit-animation: wordWave .6s ease-in-out;  animation: wordWave .6s ease-in-out; }
+  #word-slot.explode { -webkit-animation: wordExplode .6s ease-out forwards; animation: wordExplode .6s ease-out forwards; }
+  @-webkit-keyframes wordBounce {
+    0%{-webkit-transform:scale(1)} 40%{-webkit-transform:scale(1.25) translateY(-8px)} 70%{-webkit-transform:scale(0.95) translateY(3px)} 100%{-webkit-transform:scale(1)}
+  }
+  @keyframes wordBounce {
+    0%{transform:scale(1)} 40%{transform:scale(1.25) translateY(-8px)} 70%{transform:scale(0.95) translateY(3px)} 100%{transform:scale(1)}
+  }
+  @-webkit-keyframes wordWave {
+    0%,100%{-webkit-transform:skewX(0deg) scale(1)} 25%{-webkit-transform:skewX(-5deg) scale(1.05)} 75%{-webkit-transform:skewX(5deg) scale(1.05)}
+  }
+  @keyframes wordWave {
+    0%,100%{transform:skewX(0deg) scale(1)} 25%{transform:skewX(-5deg) scale(1.05)} 75%{transform:skewX(5deg) scale(1.05)}
+  }
+  @-webkit-keyframes wordExplode {
+    0%  {-webkit-transform:scale(1);text-shadow:0 0 30px rgba(0,207,255,.4)}
+    30% {-webkit-transform:scale(1.5);text-shadow:0 0 60px #fff,0 0 120px var(--color-gold);color:var(--color-gold)}
+    60% {-webkit-transform:scale(1.2)}
+    100%{-webkit-transform:scale(1.1);color:var(--color-gold);text-shadow:0 0 40px var(--color-gold)}
+  }
+  @keyframes wordExplode {
+    0%  {transform:scale(1);text-shadow:0 0 30px rgba(0,207,255,.4)}
+    30% {transform:scale(1.5);text-shadow:0 0 60px #fff,0 0 120px var(--color-gold);color:var(--color-gold)}
+    60% {transform:scale(1.2)}
+    100%{transform:scale(1.1);color:var(--color-gold);text-shadow:0 0 40px var(--color-gold)}
+  }
+
+  /* ===== CARDS ROW ===== */
+  #cards-row {
+    display: -webkit-box; display: -webkit-flex; display: flex;
+    -webkit-box-align: center; -webkit-align-items: center; align-items: center;
+    -webkit-box-pack: center; -webkit-justify-content: center; justify-content: center;
+    gap: 12px; position: relative; width: 100%;
+    min-height: 200px;
+  }
+
+  /* aspect-ratio兼容：用padding-bottom撑开 */
+  .word-card {
+    width: 22vw;
+    max-width: 200px;
+    min-width: 88px;
+    position: relative;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #1a1a2e;
+    border: 2px solid rgba(255,255,255,0.08);
+    -webkit-box-shadow: 0 8px 32px rgba(0,0,0,.5); box-shadow: 0 8px 32px rgba(0,0,0,.5);
+    /* 代替 rotateY+scale，改用 translateX+opacity 避免 3D 渲染开销 */
+    -webkit-transform: translateX(60px) scale(0.88); transform: translateX(60px) scale(0.88);
+    opacity: 0;
+    -webkit-transition: -webkit-transform .55s cubic-bezier(.22,1,.36,1), opacity .45s ease, border-color .35s ease, -webkit-box-shadow .35s ease;
+    transition: transform .55s cubic-bezier(.22,1,.36,1), opacity .45s ease, border-color .35s ease, box-shadow .35s ease;
+    -webkit-flex-shrink: 0; flex-shrink: 0;
+  }
+  /* aspect-ratio 的 padding-bottom 替代方案 */
+  .card-ratio-box {
+    width: 100%;
+    padding-bottom: 133.33%; /* 3:4 ratio */
+    position: relative;
+  }
+  .card-inner {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+  }
+
+  .word-card.visible { -webkit-transform: translateX(0) scale(1); transform: translateX(0) scale(1); opacity: 1; }
+  .word-card.active        { border-color: var(--color-accent); -webkit-box-shadow:0 0 24px rgba(0,207,255,.5),0 8px 32px rgba(0,0,0,.5); box-shadow:0 0 24px rgba(0,207,255,.5),0 8px 32px rgba(0,0,0,.5); }
+  .word-card.stage2-active { border-color: #a855f7; -webkit-box-shadow:0 0 24px rgba(168,85,247,.5),0 8px 32px rgba(0,0,0,.5); box-shadow:0 0 24px rgba(168,85,247,.5),0 8px 32px rgba(0,0,0,.5); }
+  .word-card.stage3-active { border-color: var(--color-gold); -webkit-box-shadow:0 0 24px rgba(255,215,0,.5),0 8px 32px rgba(0,0,0,.5); box-shadow:0 0 24px rgba(255,215,0,.5),0 8px 32px rgba(0,0,0,.5); }
+  .word-card.explode-card  { -webkit-animation: cardExplode .5s ease-out forwards; animation: cardExplode .5s ease-out forwards; }
+  @-webkit-keyframes cardExplode {
+    0%  {-webkit-box-shadow:0 0 24px rgba(255,215,0,.5)}
+    40% {-webkit-box-shadow:0 0 70px #fff,0 0 130px var(--color-gold);-webkit-transform:scale(1.06)}
+    100%{-webkit-box-shadow:0 0 36px var(--color-gold)}
+  }
+  @keyframes cardExplode {
+    0%  {box-shadow:0 0 24px rgba(255,215,0,.5)}
+    40% {box-shadow:0 0 70px #fff,0 0 130px var(--color-gold);transform:scale(1.06)}
+    100%{box-shadow:0 0 36px var(--color-gold)}
+  }
+
+  .card-img-wrap { position: absolute; top:0;left:0;right:0;bottom:0; }
+  .card-img-wrap img {
+    width: 100%; height: 100%; object-fit: cover;
+    -webkit-filter: grayscale(100%); filter: grayscale(100%);
+    -webkit-transition: -webkit-filter .6s ease; transition: filter .6s ease;
+    display: block;
+  }
+  .card-img-wrap img.colorize { -webkit-filter: grayscale(0%) brightness(1.1); filter: grayscale(0%) brightness(1.1); }
+
+  .card-placeholder {
+    position: absolute; top:0;left:0;right:0;bottom:0;
+    display: -webkit-box; display: -webkit-flex; display: flex;
+    -webkit-box-orient: vertical; -webkit-box-direction: normal; -webkit-flex-direction: column; flex-direction: column;
+    -webkit-box-align: center; -webkit-align-items: center; align-items: center;
+    -webkit-box-pack: center; -webkit-justify-content: center; justify-content: center;
+    gap: 8px;
+    background: -webkit-linear-gradient(145deg,#1a1a30,#0f0f20); background: linear-gradient(145deg,#1a1a30,#0f0f20);
+  }
+  .card-placeholder .icon { font-size: 2.8rem; -webkit-filter: grayscale(1); filter: grayscale(1); opacity: .35; -webkit-transition: -webkit-filter .5s, opacity .5s; transition: filter .5s, opacity .5s; }
+  .card-placeholder .icon.colorize { -webkit-filter: grayscale(0); filter: grayscale(0); opacity: 1; }
+  .card-placeholder .label { font-size: .7rem; color: #555; letter-spacing: 1px; text-transform: uppercase; }
+
+  .card-stage-badge {
+    position: absolute; top: 6px; right: 6px;
+    width: 20px; height: 20px; border-radius: 50%;
+    display: -webkit-box; display: -webkit-flex; display: flex;
+    -webkit-box-align: center; -webkit-align-items: center; align-items: center;
+    -webkit-box-pack: center; -webkit-justify-content: center; justify-content: center;
+    font-size: .65rem; font-weight: 700;
+    background: rgba(0,0,0,.5); color: #666; border: 1px solid #333;
+    -webkit-transition: all .3s; transition: all .3s;
+  }
+  .word-card.active        .card-stage-badge { background: var(--color-accent); color: #000; border-color: var(--color-accent); }
+  .word-card.stage2-active .card-stage-badge { background: #a855f7; color: #fff; border-color: #a855f7; }
+  .word-card.stage3-active .card-stage-badge { background: var(--color-gold); color: #000; border-color: var(--color-gold); }
+
+  .sound-wave {
+    position: absolute; bottom: 8px; left: 50%;
+    -webkit-transform: translateX(-50%); transform: translateX(-50%);
+    display: -webkit-box; display: -webkit-flex; display: flex;
+    gap: 3px; -webkit-box-align: flex-end; -webkit-align-items: flex-end; align-items: flex-end;
+    opacity: 0; -webkit-transition: opacity .3s; transition: opacity .3s; height: 20px;
+  }
+  .word-card.playing .sound-wave { opacity: 1; }
+  .sound-wave span { width: 4px; border-radius: 2px; background: var(--color-accent); -webkit-animation: soundBar .6s ease-in-out infinite alternate; animation: soundBar .6s ease-in-out infinite alternate; }
+  .sound-wave span:nth-child(1){height:7px;-webkit-animation-delay:0s;animation-delay:0s}
+  .sound-wave span:nth-child(2){height:16px;-webkit-animation-delay:.1s;animation-delay:.1s}
+  .sound-wave span:nth-child(3){height:11px;-webkit-animation-delay:.2s;animation-delay:.2s}
+  .sound-wave span:nth-child(4){height:18px;-webkit-animation-delay:.05s;animation-delay:.05s}
+  .sound-wave span:nth-child(5){height:6px;-webkit-animation-delay:.15s;animation-delay:.15s}
+  @-webkit-keyframes soundBar{from{-webkit-transform:scaleY(0.4)}to{-webkit-transform:scaleY(1.2)}}
+  @keyframes soundBar{from{transform:scaleY(0.4)}to{transform:scaleY(1.2)}}
+
+  /* ===== BATTERY ===== */
+  #battery-wrap {
+    display: -webkit-box; display: -webkit-flex; display: flex;
+    -webkit-box-orient: vertical; -webkit-box-direction: normal; -webkit-flex-direction: column; flex-direction: column;
+    -webkit-box-align: center; -webkit-align-items: center; align-items: center; gap: 10px;
+  }
+  #battery-label { font-size: .7rem; color: #555; letter-spacing: 2px; text-transform: uppercase; }
+  #battery {
+    width: var(--battery-w); height: var(--battery-h);
+    border: 2.5px solid rgba(255,255,255,.2); border-radius: 8px; padding: 5px;
+    display: -webkit-box; display: -webkit-flex; display: flex;
+    -webkit-box-orient: vertical; -webkit-box-direction: reverse;
+    -webkit-flex-direction: column-reverse; flex-direction: column-reverse;
+    gap: 4px; position: relative;
+    background: rgba(255,255,255,.03);
+    -webkit-box-shadow: 0 0 12px rgba(0,207,255,.1); box-shadow: 0 0 12px rgba(0,207,255,.1);
+  }
+  #battery::before {
+    content: ''; position: absolute; top: -10px; left: 50%;
+    -webkit-transform: translateX(-50%); transform: translateX(-50%);
+    width: 22px; height: 9px;
+    background: rgba(255,255,255,.15); border-radius: 4px 4px 0 0;
+  }
+  #battery.waiting  { -webkit-animation: battBreath 2s ease-in-out infinite; animation: battBreath 2s ease-in-out infinite; }
+  #battery.trembling{ -webkit-animation: battTremple .08s linear infinite; animation: battTremple .08s linear infinite; }
+  #battery.charged  { -webkit-animation: none; animation: none; }
+  @-webkit-keyframes battBreath{0%,100%{-webkit-box-shadow:0 0 8px rgba(0,207,255,.1)}50%{-webkit-box-shadow:0 0 22px rgba(0,207,255,.35)}}
+  @keyframes battBreath{0%,100%{box-shadow:0 0 8px rgba(0,207,255,.1)}50%{box-shadow:0 0 22px rgba(0,207,255,.35)}}
+  @-webkit-keyframes battTremple{0%{-webkit-transform:translateX(-1px)}50%{-webkit-transform:translateX(1px)}100%{-webkit-transform:translateX(-1px)}}
+  @keyframes battTremple{0%{transform:translateX(-1px)}50%{transform:translateX(1px)}100%{transform:translateX(-1px)}}
+
+  .batt-cell {
+    -webkit-box-flex: 1; -webkit-flex: 1; flex: 1; border-radius: 4px;
+    background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
+    -webkit-transition: background .4s ease, -webkit-box-shadow .4s ease; transition: background .4s ease, box-shadow .4s ease;
+    position: relative; overflow: hidden;
+  }
+  .batt-cell::after { content:''; position:absolute; top:0;left:0;right:0;bottom:0; background:-webkit-linear-gradient(top,rgba(255,255,255,.25) 0%,transparent 60%); background:linear-gradient(180deg,rgba(255,255,255,.25) 0%,transparent 60%); opacity:0; -webkit-transition:opacity .4s; transition:opacity .4s; }
+  .batt-cell.charged-1 { background:-webkit-linear-gradient(top,#5ee7ff,#00cfff); background:linear-gradient(180deg,#5ee7ff,#00cfff); -webkit-box-shadow:0 0 12px rgba(0,207,255,.6); box-shadow:0 0 12px rgba(0,207,255,.6); }
+  .batt-cell.charged-1::after { opacity:1; }
+  .batt-cell.charged-2 { background:-webkit-linear-gradient(top,#b87eff,#7c3aed); background:linear-gradient(180deg,#b87eff,#7c3aed); -webkit-box-shadow:0 0 16px rgba(124,58,237,.7); box-shadow:0 0 16px rgba(124,58,237,.7); }
+  .batt-cell.charged-2::after { opacity:1; }
+  .batt-cell.charged-3 { background:-webkit-linear-gradient(top,#fff176,#ffd700); background:linear-gradient(180deg,#fff176,#ffd700); -webkit-box-shadow:0 0 24px rgba(255,215,0,.9); box-shadow:0 0 24px rgba(255,215,0,.9); }
+  .batt-cell.charged-3::after { opacity:1; }
+
+  .batt-cell.pop-in { -webkit-animation: cellPop .4s cubic-bezier(.2,1.6,.4,1) both; animation: cellPop .4s cubic-bezier(.2,1.6,.4,1) both; }
+  @-webkit-keyframes cellPop{0%{-webkit-transform:scaleY(0);opacity:0}60%{-webkit-transform:scaleY(1.15)}100%{-webkit-transform:scaleY(1);opacity:1}}
+  @keyframes cellPop{0%{transform:scaleY(0);opacity:0}60%{transform:scaleY(1.15)}100%{transform:scaleY(1);opacity:1}}
+  .batt-cell.explode-flash { -webkit-animation: cellFlash .5s ease-out forwards; animation: cellFlash .5s ease-out forwards; }
+  @-webkit-keyframes cellFlash{0%,50%{-webkit-box-shadow:0 0 60px #fff;background:#fff}100%{-webkit-box-shadow:0 0 24px var(--color-gold);background:-webkit-linear-gradient(top,#fff176,#ffd700)}}
+  @keyframes cellFlash{0%,50%{box-shadow:0 0 60px #fff;background:#fff}100%{box-shadow:0 0 24px var(--color-gold);background:linear-gradient(180deg,#fff176,#ffd700)}}
+
+  /* ===== MIC BUTTON ===== */
+  #mic-btn {
+    position: absolute; left: 50%; top: 50%;
+    -webkit-transform: translate(-50%,-50%) scale(0); transform: translate(-50%,-50%) scale(0);
+    width: 70px; height: 70px; border-radius: 50%;
+    background: -webkit-radial-gradient(40% 35%, circle, #ff4ecd, #7c3aed);
+    background: radial-gradient(circle at 40% 35%, #ff4ecd, #7c3aed);
+    border: none; cursor: pointer;
+    display: -webkit-box; display: -webkit-flex; display: flex;
+    -webkit-box-align: center; -webkit-align-items: center; align-items: center;
+    -webkit-box-pack: center; -webkit-justify-content: center; justify-content: center;
+    font-size: 1.8rem;
+    -webkit-box-shadow: 0 0 28px rgba(255,78,205,.6); box-shadow: 0 0 28px rgba(255,78,205,.6);
+    -webkit-transition: -webkit-transform .4s cubic-bezier(.2,1.6,.4,1), -webkit-box-shadow .2s;
+    transition: transform .4s cubic-bezier(.2,1.6,.4,1), box-shadow .2s;
+    z-index: 10;
+  }
+  #mic-btn.show { -webkit-transform:translate(-50%,-50%) scale(1); transform:translate(-50%,-50%) scale(1); -webkit-animation:micPulse 1.2s ease-in-out infinite; animation:micPulse 1.2s ease-in-out infinite; }
+  #mic-btn:active { -webkit-transform:translate(-50%,-50%) scale(0.9); transform:translate(-50%,-50%) scale(0.9); }
+  @-webkit-keyframes micPulse{0%,100%{-webkit-box-shadow:0 0 28px rgba(255,78,205,.6),0 0 0 0 rgba(255,78,205,.3)}50%{-webkit-box-shadow:0 0 44px rgba(255,78,205,.9),0 0 0 22px rgba(255,78,205,0)}}
+  @keyframes micPulse{0%,100%{box-shadow:0 0 28px rgba(255,78,205,.6),0 0 0 0 rgba(255,78,205,.3)}50%{box-shadow:0 0 44px rgba(255,78,205,.9),0 0 0 22px rgba(255,78,205,0)}}
+
+  /* ===== STAGE DOTS ===== */
+  #stage-indicator { display:-webkit-box; display:-webkit-flex; display:flex; gap:8px; -webkit-box-align:center; -webkit-align-items:center; align-items:center; }
+  .stage-dot { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.15); -webkit-transition:background .3s,-webkit-transform .3s; transition:background .3s,transform .3s; }
+  .stage-dot.done   { background: var(--color-accent); }
+  .stage-dot.active { background: #fff; -webkit-transform:scale(1.4); transform:scale(1.4); -webkit-box-shadow:0 0 8px #fff; box-shadow:0 0 8px #fff; }
+
+  /* ===== START BUTTON ===== */
+  #start-btn {
+    padding: 13px 36px;
+    background: -webkit-linear-gradient(135deg, #00cfff 0%, #7c3aed 100%);
+    background: linear-gradient(135deg, #00cfff 0%, #7c3aed 100%);
+    border: none; border-radius: 50px;
+    color: #fff; font-size: 1rem; font-weight: 700; letter-spacing: 2px;
+    cursor: pointer;
+    -webkit-box-shadow: 0 4px 28px rgba(0,207,255,.35); box-shadow: 0 4px 28px rgba(0,207,255,.35);
+    -webkit-transition: -webkit-transform .15s, -webkit-box-shadow .15s; transition: transform .15s, box-shadow .15s;
+    min-height: 48px; /* 移动端最小触控高度 */
+  }
+  #start-btn:active { -webkit-transform: translateY(1px); transform: translateY(1px); }
+  #bottom-row {
+    display:-webkit-box; display:-webkit-flex; display:flex;
+    -webkit-box-align:center; -webkit-align-items:center; align-items:center; gap:24px;
+  }
+
+  /* ===== OVERLAYS ===== */
+  #flash-overlay { position:fixed; top:0;left:0;right:0;bottom:0; background:#fff; pointer-events:none; opacity:0; z-index:9998; -webkit-transition:opacity .15s; transition:opacity .15s; }
+  #cheer-text {
+    position:fixed; left:50%; top:30%;
+    -webkit-transform:translate(-50%,-50%) scale(0); transform:translate(-50%,-50%) scale(0);
+    font-size:11vw; font-weight:900;
+    color:var(--color-gold);
+    text-shadow:0 0 40px rgba(255,215,0,.8),0 4px 12px rgba(0,0,0,.8);
+    z-index:10000; pointer-events:none; letter-spacing:3px;
+    -webkit-transition:-webkit-transform .4s cubic-bezier(.2,1.6,.4,1),opacity .4s; transition:transform .4s cubic-bezier(.2,1.6,.4,1),opacity .4s; opacity:0;
+  }
+  @media (min-width:400px){ #cheer-text { font-size: 2.5rem; } }
+  @media (min-width:600px){ #cheer-text { font-size: 3.5rem; } }
+  #cheer-text.show { -webkit-transform:translate(-50%,-50%) scale(1); transform:translate(-50%,-50%) scale(1); opacity:1; }
+
+  #restart-hint { font-size:.8rem; color:#555; letter-spacing:1px; opacity:0; -webkit-transition:opacity .5s; transition:opacity .5s; cursor:pointer; padding:8px; }
+  #restart-hint:active { color:#aaa; }
+  #restart-hint.show { opacity:1; }
+
+  ::-webkit-scrollbar { width:4px; }
+  ::-webkit-scrollbar-thumb { background:rgba(255,255,255,.15); border-radius:2px; }
+</style>
+</head>
+<body>
+
+<canvas id="fireworks-canvas"></canvas>
+<div id="flash-overlay"></div>
+<div id="cheer-text">太棒了！⚡</div>
+<button id="settings-btn" title="设置">⚙</button>
+
+<!-- ===== SETTINGS PANEL ===== -->
+<div id="settings-panel">
+  <div class="settings-box">
+    <h2>⚙ 资源配置 · Asset Configuration</h2>
+    <div class="settings-grid">
+      <div class="settings-group full">
+        <label>目标词汇 Target Word</label>
+        <input type="text" id="cfg-word" value="Blue" placeholder="输入单词...">
+      </div>
+      <div class="settings-group">
+        <label>📷 图片资源（3张同义词卡）</label>
+        <div class="file-upload-row">
+          <label class="file-btn" id="fb-img1"><span id="img1-name">图片1</span><input type="file" id="img1-file" accept="image/*"></label>
+          <label class="file-btn" id="fb-img2"><span id="img2-name">图片2</span><input type="file" id="img2-file" accept="image/*"></label>
+          <label class="file-btn" id="fb-img3"><span id="img3-name">图片3</span><input type="file" id="img3-file" accept="image/*"></label>
+        </div>
+        <div class="slot-label">三张图片表达同一词义（蓝色书本、铅笔、书包）</div>
+      </div>
+      <div class="settings-group">
+        <label>🔊 词汇音频（自动变速）</label>
+        <div class="file-upload-row">
+          <label class="file-btn" id="fb-audio" style="-webkit-flex:1;flex:1"><span id="audio-word-name">词汇读音</span><input type="file" id="audio-word-file" accept="audio/*"></label>
+        </div>
+        <div class="slot-label">阶段1=低音 · 阶段2=正常 · 阶段3=高音升调</div>
+      </div>
+      <div class="settings-group">
+        <label>⚡ 音效 SFX</label>
+        <div class="file-upload-row">
+          <label class="file-btn" id="fb-sfx1"><span id="sfx-click-name">充电声</span><input type="file" id="sfx-click-file" accept="audio/*"></label>
+          <label class="file-btn" id="fb-sfx2"><span id="sfx-cheer-name">欢呼声</span><input type="file" id="sfx-cheer-file" accept="audio/*"></label>
+        </div>
+        <div class="file-upload-row" style="margin-top:8px">
+          <label class="file-btn" id="fb-sfx3"><span id="sfx-explode-name">爆炸声</span><input type="file" id="sfx-explode-file" accept="audio/*"></label>
+          <label class="file-btn" id="fb-sfx4"><span id="sfx-mic-name">麦克风</span><input type="file" id="sfx-mic-file" accept="audio/*"></label>
+        </div>
+      </div>
+      <div class="settings-group">
+        <label>🎨 主题色</label>
+        <div style="display:-webkit-box;display:-webkit-flex;display:flex;gap:10px;-webkit-flex-wrap:wrap;flex-wrap:wrap;margin-top:4px">
+          <div><div style="font-size:.7rem;color:#666;margin-bottom:4px">强调色</div><input type="color" id="cfg-accent" value="#00cfff" style="width:56px"></div>
+          <div><div style="font-size:.7rem;color:#666;margin-bottom:4px">爆炸色</div><input type="color" id="cfg-gold" value="#ffd700" style="width:56px"></div>
+          <div><div style="font-size:.7rem;color:#666;margin-bottom:4px">背景色</div><input type="color" id="cfg-bg" value="#0a0a12" style="width:56px"></div>
+        </div>
+      </div>
+      <div class="settings-group">
+        <label>🏆 终局文字</label>
+        <input type="text" id="cfg-cheer" value="太棒了！⚡">
+      </div>
+      <div class="settings-group full">
+        <label>🖼 占位图标</label>
+        <div style="display:-webkit-box;display:-webkit-flex;display:flex;gap:10px">
+          <input type="text" id="cfg-emoji1" value="📘" style="width:66px;text-align:center;font-size:1.3rem">
+          <input type="text" id="cfg-emoji2" value="✏️" style="width:66px;text-align:center;font-size:1.3rem">
+          <input type="text" id="cfg-emoji3" value="🎒" style="width:66px;text-align:center;font-size:1.3rem">
+        </div>
+      </div>
+      <div class="export-note">💾 <b>导出独立网页</b>：将资源打包为 base64 嵌入 HTML，可脱机分发，也可上传至任意静态托管服务（GitHub Pages / Cloudflare Pages / Netlify）生成分享链接。</div>
+    </div>
+    <div class="settings-actions">
+      <button class="btn-secondary" id="settings-cancel">取消</button>
+      <button class="btn-primary" id="settings-save">应用并重置 ✓</button>
+      <button class="btn-export" id="export-btn">💾 导出独立网页</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== GAME ROOT ===== -->
+<div id="game-root">
+  <div id="word-slot">BLUE</div>
+  <div id="cards-row">
+    <!-- Card 1 -->
+    <div class="word-card" id="card1">
+      <div class="card-ratio-box">
+        <div class="card-inner">
+          <div class="card-placeholder" id="ph1"><div class="icon" id="ph1-icon">📘</div><div class="label">Card 1</div></div>
+          <div class="card-img-wrap"><img id="img1" src="" alt="" style="display:none"></div>
+        </div>
+      </div>
+      <div class="card-stage-badge">1</div>
+      <div class="sound-wave"><span></span><span></span><span></span><span></span><span></span></div>
+    </div>
+    <!-- Card 2 -->
+    <div class="word-card" id="card2">
+      <div class="card-ratio-box">
+        <div class="card-inner">
+          <div class="card-placeholder" id="ph2"><div class="icon" id="ph2-icon">✏️</div><div class="label">Card 2</div></div>
+          <div class="card-img-wrap"><img id="img2" src="" alt="" style="display:none"></div>
+        </div>
+      </div>
+      <div class="card-stage-badge">2</div>
+      <div class="sound-wave"><span></span><span></span><span></span><span></span><span></span></div>
+    </div>
+    <!-- Card 3 -->
+    <div class="word-card" id="card3">
+      <div class="card-ratio-box">
+        <div class="card-inner">
+          <div class="card-placeholder" id="ph3"><div class="icon" id="ph3-icon">🎒</div><div class="label">Card 3</div></div>
+          <div class="card-img-wrap"><img id="img3" src="" alt="" style="display:none"></div>
+        </div>
+      </div>
+      <div class="card-stage-badge">3</div>
+      <div class="sound-wave"><span></span><span></span><span></span><span></span><span></span></div>
+      <button id="mic-btn">🎤</button>
+    </div>
+  </div>
+
+  <div id="bottom-row">
+    <div style="display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-orient:vertical;-webkit-box-direction:normal;-webkit-flex-direction:column;flex-direction:column;-webkit-box-align:center;-webkit-align-items:center;align-items:center;gap:8px">
+      <div id="stage-indicator">
+        <div class="stage-dot" id="dot1"></div>
+        <div class="stage-dot" id="dot2"></div>
+        <div class="stage-dot" id="dot3"></div>
+      </div>
+      <div style="font-size:.65rem;color:#444;letter-spacing:1px">STAGE</div>
+    </div>
+    <div id="battery-wrap">
+      <div id="battery-label">ENERGY</div>
+      <div id="battery" class="waiting">
+        <div class="batt-cell" id="cell3"></div>
+        <div class="batt-cell" id="cell2"></div>
+        <div class="batt-cell" id="cell1"></div>
+      </div>
+    </div>
+    <div style="display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-orient:vertical;-webkit-box-direction:normal;-webkit-flex-direction:column;flex-direction:column;-webkit-box-align:center;-webkit-align-items:center;align-items:center;gap:10px">
+      <button id="start-btn">▶ 开始学习</button>
+      <div id="restart-hint" id="restart-hint-btn">↺ 重新开始</div>
+    </div>
+  </div>
+</div>
+
+<script id="injected-assets">
+window.__BAKED_ASSETS__ = null; // EXPORT_PLACEHOLDER
+</script>
+
+<script>
+/* =============================================
+   STATE
+   ============================================= */
+var state = {
+  stage: 0, running: false,
+  assets: {
+    word: 'BLUE', img: [null,null,null],
+    wordAudio: null, sfxClick: null, sfxCheer: null, sfxExplode: null, sfxMic: null,
+    emoji: ['📘','✏️','🎒'],
+    accentColor: '#00cfff', goldColor: '#ffd700', bgColor: '#0a0a12',
+    cheerText: '太棒了！⚡'
+  },
+  b64: { img: [null,null,null], wordAudio: null, sfxClick: null, sfxCheer: null, sfxExplode: null, sfxMic: null }
+};
+
+/* =============================================
+   LOAD BAKED ASSETS
+   ============================================= */
+(function loadBaked() {
+  var b = window.__BAKED_ASSETS__;
+  if (!b) return;
+  if (b.word)        state.assets.word = b.word;
+  if (b.emoji)       state.assets.emoji = b.emoji;
+  if (b.accentColor) { state.assets.accentColor = b.accentColor; document.documentElement.style.setProperty('--color-accent', b.accentColor); }
+  if (b.goldColor)   { state.assets.goldColor   = b.goldColor;   document.documentElement.style.setProperty('--color-gold',   b.goldColor); }
+  if (b.bgColor)     { state.assets.bgColor     = b.bgColor;     document.body.style.background = b.bgColor; }
+  if (b.cheerText)   state.assets.cheerText = b.cheerText;
+  if (b.wordAudio)   state.assets.wordAudio  = state.b64.wordAudio  = b.wordAudio;
+  if (b.sfxClick)    state.assets.sfxClick   = state.b64.sfxClick   = b.sfxClick;
+  if (b.sfxCheer)    state.assets.sfxCheer   = state.b64.sfxCheer   = b.sfxCheer;
+  if (b.sfxExplode)  state.assets.sfxExplode = state.b64.sfxExplode = b.sfxExplode;
+  if (b.sfxMic)      state.assets.sfxMic     = state.b64.sfxMic     = b.sfxMic;
+  if (b.img) b.img.forEach(function(d,i){ if(d){ state.assets.img[i]=d; state.b64.img[i]=d; } });
+  document.addEventListener('DOMContentLoaded', function() {
+    if (b.word)   { var el=ge('cfg-word'); if(el) el.value=b.word; }
+    if (b.accentColor){ var el=ge('cfg-accent'); if(el) el.value=b.accentColor; }
+    if (b.goldColor)  { var el=ge('cfg-gold');   if(el) el.value=b.goldColor; }
+    if (b.bgColor)    { var el=ge('cfg-bg');     if(el) el.value=b.bgColor; }
+    if (b.cheerText)  { var el=ge('cfg-cheer');  if(el) el.value=b.cheerText; }
+    if (b.emoji) b.emoji.forEach(function(e,i){ var el=ge('cfg-emoji'+(i+1)); if(el&&e) el.value=e; });
+    if (b.img) b.img.forEach(function(d,i){ if(d) applyImg(i,d); });
+    if (b.emoji) b.emoji.forEach(function(e,i){ var el=ge('ph'+(i+1)+'-icon'); if(el&&e) el.textContent=e; });
+    updateWordDisplay();
+  });
+})();
+
+/* =============================================
+   DOM HELPERS
+   ============================================= */
+function ge(id){ return document.getElementById(id); }
+var wordSlot    = ge('word-slot');
+var cards       = [ge('card1'),ge('card2'),ge('card3')];
+var cells       = [ge('cell1'),ge('cell2'),ge('cell3')];
+var dots        = [ge('dot1'), ge('dot2'), ge('dot3')];
+var battery     = ge('battery');
+var micBtn      = ge('mic-btn');
+var startBtn    = ge('start-btn');
+var restartHint = ge('restart-hint-btn');
+var flashOv     = ge('flash-overlay');
+var cheerEl     = ge('cheer-text');
+var canvas      = ge('fireworks-canvas');
+var ctx         = canvas.getContext('2d');
+
+/* =============================================
+   CANVAS — DPR aware (高清屏)
+   ============================================= */
+function resizeCanvas() {
+  var dpr = window.devicePixelRatio || 1;
+  canvas.width  = window.innerWidth  * dpr;
+  canvas.height = window.innerHeight * dpr;
+  canvas.style.width  = window.innerWidth  + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+/* =============================================
+   AUDIO ENGINE
+   ============================================= */
+var audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  // iOS需要resume
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function playAudio(url, opts) {
+  opts = opts || {};
+  if (!url) { playBeep(opts); return null; }
+  var a = new Audio(url);
+  a.playbackRate = opts.rate  || 1.0;
+  a.volume       = opts.volume|| 1.0;
+  a.play().catch(function(){});
+  return a;
+}
+function playBeep(opts) {
+  opts = opts || {};
+  var freq=opts.freq||440, dur=opts.duration||0.3, type=opts.type||'sine', vol=opts.volume||0.5, rate=opts.rate||1;
+  var c = getAudioCtx();
+  var osc = c.createOscillator(), gain = c.createGain();
+  osc.connect(gain); gain.connect(c.destination);
+  osc.frequency.value = freq * rate; osc.type = type;
+  gain.gain.setValueAtTime(vol, c.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
+  osc.start(); osc.stop(c.currentTime + dur);
+}
+function playClickSFX() {
+  if (state.assets.sfxClick) { playAudio(state.assets.sfxClick,{volume:.7}); return; }
+  var c=getAudioCtx(), buf=c.createBuffer(1,c.sampleRate*.05,c.sampleRate), d=buf.getChannelData(0);
+  for(var i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,3);
+  var src=c.createBufferSource(), g=c.createGain(); g.gain.value=.35;
+  src.buffer=buf; src.connect(g); g.connect(c.destination); src.start();
+}
+function playCheerSFX() {
+  if (state.assets.sfxCheer) { playAudio(state.assets.sfxCheer,{volume:1}); return; }
+  [0,4,7,12].forEach(function(st,i){ setTimeout(function(){ playBeep({freq:440*Math.pow(2,st/12),duration:.25,type:'triangle',volume:.4}); },i*100); });
+}
+function playExplodeSFX() {
+  if (state.assets.sfxExplode) { playAudio(state.assets.sfxExplode,{volume:1}); return; }
+  playBeep({freq:200,duration:.5,type:'sawtooth',volume:.3});
+  setTimeout(function(){ playBeep({freq:600,duration:.4,type:'triangle',volume:.5}); },100);
+}
+function playMicSFX() {
+  if (state.assets.sfxMic) { playAudio(state.assets.sfxMic,{volume:.6}); return; }
+  playBeep({freq:880,duration:.15,type:'sine',volume:.3});
+}
+function playWordAudio(stage) {
+  var rates=[.78,1.0,1.35], vols=[.7,.9,1.0];
+  if (state.assets.wordAudio) { playAudio(state.assets.wordAudio,{rate:rates[stage-1],volume:vols[stage-1]}); return; }
+  playBeep({freq:[180,260,380][stage-1],duration:.55,type:'sine',volume:vols[stage-1]});
+}
+
+/* =============================================
+   UTILS
+   ============================================= */
+function vibrate(p){ if(navigator.vibrate) try{ navigator.vibrate(p); }catch(e){} }
+function delay(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+function toBase64(file) {
+  return new Promise(function(resolve) {
+    var reader = new FileReader();
+    reader.onload = function(e){ resolve(e.target.result); };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* =============================================
+   TOUCH-SAFE EVENT BINDING
+   (消除300ms延迟，同时绑定touch和click)
+   ============================================= */
+function onTap(el, fn) {
+  var touched = false;
+  el.addEventListener('touchstart', function(e) {
+    touched = true;
+    e.preventDefault();  // 阻止ghost click
+    fn(e);
+  }, { passive: false });
+  el.addEventListener('click', function(e) {
+    if (touched) { touched = false; return; }
+    fn(e);
+  });
+}
+
+/* =============================================
+   CARD COLORIZE
+   ============================================= */
+function colorizeCard(idx) {
+  var img=ge('img'+(idx+1)), ph=ge('ph'+(idx+1)+'-icon');
+  if (img && img.src && img.src !== location.href) img.classList.add('colorize');
+  if (ph) ph.classList.add('colorize');
+}
+function decolorizeCard(idx) {
+  var img=ge('img'+(idx+1)), ph=ge('ph'+(idx+1)+'-icon');
+  if (img) img.classList.remove('colorize');
+  if (ph)  ph.classList.remove('colorize');
+}
+function applyImg(idx, url) {
+  var img=ge('img'+(idx+1)), ph=ge('ph'+(idx+1));
+  if (!img||!ph) return;
+  img.src=url; img.style.display='block'; ph.style.display='none';
+}
+
+/* =============================================
+   BATTERY
+   ============================================= */
+function chargeCell(n) {
+  cells[n-1].className = 'batt-cell charged-'+n+' pop-in';
+  playClickSFX(); vibrate([30,20,50]);
+  battery.classList.remove('waiting');
+  if (n===1) { wordSlot.classList.remove('bounce','wave'); void wordSlot.offsetWidth; wordSlot.classList.add('bounce'); }
+  if (n===2) {
+    wordSlot.classList.remove('bounce','wave'); void wordSlot.offsetWidth; wordSlot.classList.add('wave');
+    setTimeout(function(){ battery.classList.add('trembling'); setTimeout(function(){ battery.classList.remove('trembling'); },1200); },300);
+  }
+}
+function explodeCell3() {
+  cells[2].className='batt-cell charged-3 explode-flash';
+  battery.classList.remove('trembling'); battery.classList.add('charged');
+}
+function setDot(n,s){ dots[n-1].className='stage-dot '+(s||''); }
+function setCardActive(idx, playing) {
+  var cls=['active','stage2-active','stage3-active'];
+  cards.forEach(function(c){ c.classList.remove('active','stage2-active','stage3-active','playing'); });
+  if (idx>=0) { cards[idx].classList.add(cls[idx]); if(playing) cards[idx].classList.add('playing'); }
+}
+function triggerFlash(dur) {
+  dur=dur||120;
+  flashOv.style.opacity='0.85';
+  setTimeout(function(){ flashOv.style.opacity='0'; },dur);
+}
+
+/* =============================================
+   FIREWORKS (粒子数降至50，适配低端机)
+   ============================================= */
+function Particle(x,y,color){
+  this.x=x; this.y=y; this.color=color;
+  var a=Math.random()*Math.PI*2, s=2+Math.random()*7;
+  this.vx=Math.cos(a)*s; this.vy=Math.sin(a)*s-2;
+  this.life=1; this.decay=.014+Math.random()*.016;
+  this.radius=1.5+Math.random()*2.5; this.gravity=.14; this.trail=[];
+}
+Particle.prototype.update=function(){
+  this.trail.push({x:this.x,y:this.y,life:this.life});
+  if(this.trail.length>5) this.trail.shift();
+  this.vy+=this.gravity; this.x+=this.vx; this.y+=this.vy;
+  this.vx*=.97; this.vy*=.97; this.life-=this.decay;
+};
+Particle.prototype.draw=function(ctx){
+  var self=this;
+  self.trail.forEach(function(t,i){
+    ctx.beginPath(); ctx.arc(t.x,t.y,self.radius*(i/self.trail.length)*.5,0,Math.PI*2);
+    ctx.fillStyle=self.color.replace('1)',''+(t.life*.35)+')'); ctx.fill();
+  });
+  ctx.beginPath(); ctx.arc(self.x,self.y,self.radius,0,Math.PI*2);
+  ctx.fillStyle=self.color.replace('1)',self.life+')'); ctx.fill();
+};
+
+var particles=[],fwActive=false,fwTimer=null,rafId=null;
+var FW_COLORS=['rgba(255,215,0,1)','rgba(0,207,255,1)','rgba(255,78,205,1)','rgba(127,255,212,1)','rgba(255,180,80,1)','rgba(200,160,255,1)'];
+function launchFW(x,y){
+  var c=FW_COLORS[Math.floor(Math.random()*FW_COLORS.length)];
+  for(var i=0;i<50;i++) particles.push(new Particle(x,y,c)); // 50而非80
+}
+function launchMultiFW(){
+  var pts=[[.2,.25],[.5,.15],[.8,.25],[.15,.5],[.85,.5],[.5,.42],[.35,.68],[.65,.68]];
+  pts.forEach(function(p,i){ setTimeout(function(){ launchFW(p[0]*window.innerWidth, p[1]*window.innerHeight); },i*130); });
+  var cnt=0, iv=setInterval(function(){
+    if(cnt++>12){ clearInterval(iv); return; }
+    launchFW((.1+Math.random()*.8)*window.innerWidth, (.1+Math.random()*.6)*window.innerHeight);
+  },220);
+}
+var rAF = window.requestAnimationFrame || window.webkitRequestAnimationFrame || function(cb){ setTimeout(cb,16); };
+function fwLoop(){
+  if(!fwActive&&particles.length===0){ rafId=null; return; }
+  rafId=rAF(fwLoop);
+  ctx.clearRect(0,0,window.innerWidth,window.innerHeight);
+  particles=particles.filter(function(p){ return p.life>0; });
+  particles.forEach(function(p){ p.update(); p.draw(ctx); });
+}
+function startFireworks(){
+  fwActive=true; launchMultiFW();
+  if(!rafId) fwLoop();
+  clearTimeout(fwTimer);
+  fwTimer=setTimeout(function(){ fwActive=false; },4000);
+}
+
+/* =============================================
+   GAME FLOW
+   ============================================= */
+async function runGame() {
+  startBtn.style.display='none'; state.running=true; state.stage=0; updateWordDisplay();
+
+  state.stage=1; setDot(1,'active');
+  cards[0].classList.add('visible'); await delay(400);
+  colorizeCard(0); setCardActive(0,true); await delay(350);
+  playWordAudio(1);
+  wordSlot.classList.remove('bounce','wave','explode'); void wordSlot.offsetWidth; wordSlot.classList.add('bounce');
+  await delay(700); chargeCell(1); await delay(500);
+  cards[0].classList.remove('playing'); setDot(1,'done'); await delay(1500);
+
+  state.stage=2; setDot(2,'active');
+  cards[1].classList.add('visible'); await delay(400);
+  colorizeCard(1); setCardActive(1,true); await delay(350);
+  playWordAudio(2);
+  wordSlot.classList.remove('bounce','wave','explode'); void wordSlot.offsetWidth; wordSlot.classList.add('wave');
+  await delay(700); chargeCell(2); await delay(500);
+  cards[1].classList.remove('playing'); setDot(2,'done'); await delay(1500);
+
+  state.stage=3; setDot(3,'active');
+  cards[2].classList.add('visible'); await delay(400);
+  colorizeCard(2); setCardActive(2,false); await delay(300);
+  playWordAudio(3); playMicSFX(); await delay(600);
+  micBtn.classList.add('show'); cards[2].classList.add('stage3-active');
+}
+
+async function triggerFinale() {
+  if (state.stage!==3||!state.running) return;
+  state.stage=4; micBtn.classList.remove('show'); cards[2].classList.add('playing');
+  playWordAudio(3); await delay(150);
+  triggerFlash(200); playExplodeSFX(); vibrate([50,30,50,30,100]);
+  explodeCell3(); cards[2].classList.remove('stage3-active'); cards[2].classList.add('explode-card');
+  wordSlot.classList.remove('bounce','wave'); void wordSlot.offsetWidth; wordSlot.classList.add('explode');
+  await delay(300); triggerFlash(300); startFireworks();
+  await delay(200); playCheerSFX();
+  cheerEl.textContent=state.assets.cheerText; cheerEl.classList.add('show');
+  await delay(400); setDot(3,'done'); cards[2].classList.remove('playing'); state.running=false;
+  setTimeout(function(){ cheerEl.classList.remove('show'); },2500);
+  setTimeout(function(){ restartHint.classList.add('show'); },1500);
+}
+
+function resetGame() {
+  state.stage=0; state.running=false;
+  cards.forEach(function(c){ c.className='word-card'; });
+  [0,1,2].forEach(function(i){ decolorizeCard(i); });
+  cells.forEach(function(c){ c.className='batt-cell'; });
+  battery.className='waiting';
+  dots.forEach(function(d){ d.className='stage-dot'; });
+  wordSlot.className=''; void wordSlot.offsetWidth;
+  micBtn.classList.remove('show'); cheerEl.classList.remove('show');
+  fwActive=false; particles=[];
+  ctx.clearRect(0,0,window.innerWidth,window.innerHeight);
+  startBtn.style.display=''; restartHint.classList.remove('show');
+}
+
+/* ===== 触控绑定 ===== */
+onTap(micBtn, function(){ triggerFinale(); });
+onTap(startBtn, function(){ getAudioCtx(); runGame(); });
+onTap(restartHint, function(){ resetGame(); });
+
+/* 键盘兼容（PC端） */
+document.addEventListener('keydown', function(e){
+  if (e.code==='Space'&&state.stage===3){ e.preventDefault(); triggerFinale(); }
+  if (e.code==='Enter'&&state.stage===0&&!state.running) runGame();
+});
+
+function updateWordDisplay(){ wordSlot.textContent=(state.assets.word||'WORD').toUpperCase(); }
+
+/* =============================================
+   SETTINGS
+   ============================================= */
+onTap(ge('settings-btn'),  function(){ ge('settings-panel').classList.add('open'); });
+onTap(ge('settings-cancel'),function(){ ge('settings-panel').classList.remove('open'); });
+
+async function bindFileInput(inputId, nameId, btnId, onload) {
+  var input=ge(inputId), nameEl=ge(nameId), btn=ge(btnId);
+  input.addEventListener('change', async function(e){
+    var file=e.target.files[0]; if(!file) return;
+    nameEl.textContent = file.name.length>12 ? file.name.slice(0,10)+'…' : file.name;
+    btn.classList.add('has-file');
+    var blobUrl = URL.createObjectURL(file);
+    var b64 = await toBase64(file);
+    onload(blobUrl, b64);
+  });
+}
+
+bindFileInput('img1-file','img1-name','fb-img1',function(url,b64){ state.assets.img[0]=url; state.b64.img[0]=b64; applyImg(0,url); });
+bindFileInput('img2-file','img2-name','fb-img2',function(url,b64){ state.assets.img[1]=url; state.b64.img[1]=b64; applyImg(1,url); });
+bindFileInput('img3-file','img3-name','fb-img3',function(url,b64){ state.assets.img[2]=url; state.b64.img[2]=b64; applyImg(2,url); });
+bindFileInput('audio-word-file','audio-word-name','fb-audio',function(url,b64){ state.assets.wordAudio=url; state.b64.wordAudio=b64; });
+bindFileInput('sfx-click-file','sfx-click-name','fb-sfx1',function(url,b64){ state.assets.sfxClick=url;   state.b64.sfxClick=b64; });
+bindFileInput('sfx-cheer-file','sfx-cheer-name','fb-sfx2',function(url,b64){ state.assets.sfxCheer=url;   state.b64.sfxCheer=b64; });
+bindFileInput('sfx-explode-file','sfx-explode-name','fb-sfx3',function(url,b64){ state.assets.sfxExplode=url; state.b64.sfxExplode=b64; });
+bindFileInput('sfx-mic-file','sfx-mic-name','fb-sfx4',function(url,b64){ state.assets.sfxMic=url;     state.b64.sfxMic=b64; });
+
+ge('settings-save').addEventListener('click', function(){
+  var w=ge('cfg-word').value.trim(); if(w) state.assets.word=w;
+  var accent=ge('cfg-accent').value, gold=ge('cfg-gold').value, bg=ge('cfg-bg').value;
+  state.assets.accentColor=accent; state.assets.goldColor=gold; state.assets.bgColor=bg;
+  document.documentElement.style.setProperty('--color-accent',accent);
+  document.documentElement.style.setProperty('--color-gold',gold);
+  document.body.style.background=bg;
+  ['1','2','3'].forEach(function(n){
+    var v=ge('cfg-emoji'+n).value.trim();
+    if(v){ state.assets.emoji[n-1]=v; ge('ph'+n+'-icon').textContent=v; }
+  });
+  var ct=ge('cfg-cheer').value.trim(); if(ct) state.assets.cheerText=ct;
+  ge('settings-panel').classList.remove('open');
+  resetGame(); updateWordDisplay();
+});
+
+/* =============================================
+   EXPORT STANDALONE
+   ============================================= */
+ge('export-btn').addEventListener('click', async function() {
+  var btn=ge('export-btn');
+  btn.textContent='⏳ 打包中...'; btn.disabled=true;
+  var baked = {
+    word:       state.assets.word,
+    img:        state.b64.img.slice(),
+    wordAudio:  state.b64.wordAudio,
+    sfxClick:   state.b64.sfxClick, sfxCheer:  state.b64.sfxCheer,
+    sfxExplode: state.b64.sfxExplode, sfxMic:  state.b64.sfxMic,
+    emoji:      state.assets.emoji.slice(),
+    accentColor:state.assets.accentColor, goldColor:state.assets.goldColor,
+    bgColor:    state.assets.bgColor,     cheerText:state.assets.cheerText
+  };
+  var html = document.documentElement.outerHTML;
+  for (var i=0;i<3;i++){
+    if (state.assets.img[i]&&state.assets.img[i].indexOf('blob:')===0)
+      html = html.split('src="'+state.assets.img[i]+'"').join('src=""');
+  }
+  html = html.replace(/class="word-card\s[^"]+"/g,'class="word-card"');
+  html = html.replace(/class="batt-cell\s[^"]+"/g,'class="batt-cell"');
+  html = html.replace(/id="battery"\s+class="[^"]+"/g,'id="battery" class="waiting"');
+  html = html.replace(/id="start-btn"\s+style="display:\s*none;?"/g,'id="start-btn"');
+  html = html.replace('window.__BAKED_ASSETS__ = null; // EXPORT_PLACEHOLDER',
+                      'window.__BAKED_ASSETS__ = '+JSON.stringify(baked)+';');
+  var safeName=(state.assets.word||'word').replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g,'_');
+  html = html.replace(/<title>[^<]*<\/title>/,'<title>词汇游戏 · '+state.assets.word.toUpperCase()+'</title>');
+  var blob = new Blob([html],{type:'text/html;charset=utf-8'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='vocab-'+safeName.toLowerCase()+'.html';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(a.href); },1000);
+  btn.textContent='💾 导出独立网页'; btn.disabled=false;
+});
+
+updateWordDisplay();
+</script>
+</body>
+</html>
