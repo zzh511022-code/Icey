@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>初级词汇课泳道结构图 v2</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: #f0f2f5;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  /* ── 顶部标题栏 ── */
+  .header {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px 28px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .header h1 { font-size: 20px; color: #1a1a1a; }
+  .header .subtitle { font-size: 12px; color: #888; margin-top: 4px; }
+
+  /* ── 筛选栏 ── */
+  .filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .filters span { font-size: 12px; color: #666; }
+  .filter-btn {
+    border: none; border-radius: 20px; padding: 5px 14px;
+    font-size: 12px; cursor: pointer; transition: all .2s;
+    font-family: inherit;
+  }
+  .filter-btn.all    { background:#1a1a1a; color:#fff; }
+  .filter-btn.listen { background:#d6eaf8; color:#1a5276; }
+  .filter-btn.visual { background:#d5f5e3; color:#1e8449; }
+  .filter-btn.read   { background:#fdebd0; color:#935116; }
+  .filter-btn.speak  { background:#fde8e8; color:#c0392b; }
+  .filter-btn.write  { background:#e8daef; color:#6c3483; }
+  .filter-btn:hover  { opacity:.8; transform:scale(1.05); }
+  .filter-btn.active { box-shadow: 0 0 0 2px #333; }
+
+  /* ── 泳道容器 ── */
+  .swimlane-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* ── 单条泳道 ── */
+  .lane {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    overflow: hidden;
+    transition: box-shadow .2s;
+  }
+  .lane:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.10); }
+
+  .lane-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    color: #fff;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .lane-header .phase-num {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0;
+  }
+  .lane-header .toggle-icon {
+    margin-left: auto; font-size: 16px;
+    transition: transform .3s;
+  }
+  .lane-header.collapsed .toggle-icon { transform: rotate(-90deg); }
+
+  .lane-present  .lane-header { background: linear-gradient(135deg, #1a78c2, #2e8dd6); }
+  .lane-practice .lane-header { background: linear-gradient(135deg, #d4a017, #e6b52a); }
+  .lane-output   .lane-header { background: linear-gradient(135deg, #27ae60, #2ecc71); }
+  .lane-summary  .lane-header { background: linear-gradient(135deg, #8e44ad, #9b59b6); }
+
+  /* ── 节点行 ── */
+  .lane-body {
+    padding: 16px 20px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    overflow-x: auto;
+    transition: max-height .4s ease, padding .4s ease, opacity .4s ease;
+    max-height: 1000px;
+    opacity: 1;
+  }
+  .lane-body.collapsed {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    opacity: 0;
+    overflow: hidden;
+  }
+
+  /* ── 箭头连接器 ── */
+  .arrow {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    padding-top: 20px;
+    color: #bbb;
+    font-size: 20px;
+    transition: color .2s;
+  }
+
+  /* ── 节点卡片 ── */
+  .node-card {
+    flex: 0 0 200px;
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background: #fafafa;
+    padding: 14px;
+    cursor: pointer;
+    transition: all .25s;
+    position: relative;
+  }
+  .node-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+  }
+  .node-card.expanded {
+    flex: 0 0 280px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  }
+  .node-card.dimmed { opacity: .25; pointer-events: none; }
+
+  .lane-present  .node-card { border-color: #aed6f1; }
+  .lane-practice .node-card { border-color: #f9e4b7; }
+  .lane-output   .node-card { border-color: #a9dfbf; }
+  .lane-summary  .node-card { border-color: #d2b4de; }
+
+  .lane-present  .node-card.expanded { background: #eaf4fb; }
+  .lane-practice .node-card.expanded { background: #fef9e7; }
+  .lane-output   .node-card.expanded { background: #eafaf1; }
+  .lane-summary  .node-card.expanded { background: #f5eef8; }
+
+  /* 节点头部 */
+  .node-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .node-num {
+    width: 24px; height: 24px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: #fff; flex-shrink: 0; font-weight: 700;
+  }
+  .lane-present  .node-num { background: #1a78c2; }
+  .lane-practice .node-num { background: #d4a017; }
+  .lane-output   .node-num { background: #27ae60; }
+  .lane-summary  .node-num { background: #8e44ad; }
+
+  .node-title { font-size: 12px; font-weight: 700; color: #1a1a1a; line-height: 1.4; }
+
+  /* 标签 */
+  .tag {
+    display: inline-block; border-radius: 4px;
+    padding: 1px 6px; font-size: 10px; margin-left: 4px;
+    vertical-align: middle;
+  }
+  .tag-upgrade  { background: #fff3cd; color: #856404; font-weight: 700; }
+  .tag-optional { background: #f0f0f0; color: #888; border: 1px dashed #bbb; }
+  .tag-new      { background: #d1ecf1; color: #0c5460; font-weight: 700; }
+
+  /* 通道标签 */
+  .channels { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+  .channel {
+    display: inline-block; border-radius: 4px;
+    padding: 2px 8px; font-size: 10px;
+  }
+  .ch-listen { background:#d6eaf8; color:#1a5276; }
+  .ch-visual { background:#d5f5e3; color:#1e8449; }
+  .ch-read   { background:#fdebd0; color:#935116; }
+  .ch-speak  { background:#fde8e8; color:#c0392b; }
+  .ch-write  { background:#e8daef; color:#6c3483; }
+
+  /* 认知负荷条 */
+  .load-wrap { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .load-bar  { display: flex; gap: 3px; }
+  .load-dot  { width: 9px; height: 9px; border-radius: 2px; background: #e0e0e0; }
+  .load-dot.filled { background: #e67e22; }
+  .load-label { font-size: 10px; color: #666; }
+
+  /* 脚手架 */
+  .scaffold {
+    font-size: 10px; font-weight: 700; margin-bottom: 6px;
+  }
+  .scaffold.full    { color: #1a78c2; }
+  .scaffold.partial { color: #d4a017; }
+
+  /* 展开详情 */
+  .node-detail {
+    display: none;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #ddd;
+    font-size: 11px;
+    color: #444;
+    line-height: 1.7;
+  }
+  .node-card.expanded .node-detail { display: block; }
+
+  .detail-label {
+    font-weight: 700; color: #888; font-size: 10px;
+    text-transform: uppercase; letter-spacing: .5px;
+    margin-top: 8px; margin-bottom: 2px;
+  }
+  .detail-label:first-child { margin-top: 0; }
+
+  .upgrade-box {
+    background: #fff3cd;
+    border-left: 3px solid #ffc107;
+    border-radius: 4px;
+    padding: 6px 8px;
+    font-size: 10px;
+    color: #856404;
+    line-height: 1.7;
+    margin-top: 4px;
+  }
+
+  .speak-count {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #fde8e8; color: #c0392b;
+    border-radius: 4px; padding: 2px 7px; font-size: 10px;
+    font-weight: 700;
+  }
+
+  /* 提示 */
+  .tip {
+    text-align: center; color: #aaa; font-size: 11px;
+    margin-top: 4px;
+  }
+
+  /* ── 底部图例 ── */
+  .legend {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px 24px;
+    margin-top: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: flex-start;
+  }
+  .legend-group { display: flex; flex-direction: column; gap: 6px; }
+  .legend-title { font-size: 11px; font-weight: 700; color: #888; margin-bottom: 2px; }
+  .legend-row { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #444; }
+</style>
+</head>
+<body>
+
+<!-- 标题栏 -->
+<div class="header">
+  <div>
+    <h1>初级词汇课泳道结构图</h1>
+    <div class="subtitle">适用年龄：10–12岁 ｜ 四段结构：词汇呈现 → 词汇练习 → 词汇产出 → 词汇总结 ｜ 点击节点展开详情</div>
+  </div>
+  <div class="filters">
+    <span>筛选通道：</span>
+    <button class="filter-btn all active" onclick="filter('all')">全部</button>
+    <button class="filter-btn listen" onclick="filter('listen')">🎧 听力</button>
+    <button class="filter-btn visual" onclick="filter('visual')">👁 视觉</button>
+    <button class="filter-btn read"   onclick="filter('read')">📖 阅读</button>
+    <button class="filter-btn speak"  onclick="filter('speak')">🗣 口语</button>
+    <button class="filter-btn write"  onclick="filter('write')">✍ 书写</button>
+  </div>
+</div>
+
+<!-- 泳道 -->
+<div class="swimlane-wrap">
+
+  <!-- 第一段：词汇呈现 -->
+  <div class="lane lane-present" id="lane-present">
+    <div class="lane-header" onclick="toggleLane('present')">
+      <div class="phase-num">一</div>
+      词汇呈现
+      <span style="font-weight:400;font-size:12px;opacity:.85;margin-left:4px;">节点 1–4 ｜ 全脚手架 ｜ 极低→低认知负荷</span>
+      <span class="toggle-icon">▼</span>
+    </div>
+    <div class="lane-body" id="body-present">
+
+      <div class="node-card" id="n1" data-channels="listen visual" onclick="toggleNode('n1')">
+        <div class="node-head">
+          <div class="node-num">1</div>
+          <div class="node-title">音义绑定<span class="tag tag-upgrade">升级</span></div>
+        </div>
+        <div class="channels">
+          <span class="channel ch-listen">听力输入</span>
+          <span class="channel ch-visual">视觉输入</span>
+        </div>
+        <div class="load-wrap">
+          <div class="load-bar"><div class="load-dot filled"></div><div class="load-dot"></div><div class="load-dot"></div><div class="load-dot"></div><div class="load-dot"></div></div>
+          <span class="load-label">极低</span>
+        </div>
+        <div class="scaffold full">● 全开脚手架</div>
+        <div class="node-detail">
+          <div class="detail-label">学生在做什么</div>
+          听发音，点击对应图片触发复听与动效
+          <div class="upgrade-box">升级：图片从单一物体图升级为情境图。如听到 "birthday"，需在生日派对场景图中点击蛋糕区域；听到 "season"，需在四季拼图场景中点击对应季节区域。无文字。</div>
+          <div class="detail-label">开口次数</div> <span class="speak-count">🔇 0次</span>
+          <div class="detail-label">反馈机制</div> 点击正确区域动效确认；点击错误区域静默无反应
+          <div class="detail-label">理论依据</div> Nation：音义优先绑定；情境嵌入词义习得
+        </div>
+      </div>
+
+      <div class="arrow">›</div>
+
+      <div class="node-card" id="n2" data-channels="listen visual" onclick="toggleNode('n2')">
+        <div class="node-head">
+          <div class="node-num">2</div>
+          <div class="node-title">音形绑定+词根感知<span class="tag tag-upgrade">升级</span></div>
+        </div>
+        <div class="channels">
+          <span class="channel ch-listen">听力输入</span>
+          <span class="channel ch-visual">视觉输入</span>
+        </div>
+        <div class="load-wrap">
+          <div class="load-bar"><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot"></div><div class="load-dot"></div><div class="load-dot"></div></div>
+          <span class="load-label">低</span>
+        </div>
+        <div class="scaffold full">● 全开脚手架</div>
+        <div class="node-detail">
+          <div class="detail-label">学生在做什么</div>
+          点击词形，观看音节动画
+          <div class="upgrade-box">升级：多音节词出现词根/词缀颜色标注。如 "birthday" 拆分为 birth（蓝）+ day（绿），点击各色块听对应发音；"festival" 拆分为 festi + val。图文同屏。</div>
+          <div class="detail-label">开口次数</div> <span class="speak-count">🔇 0次</span>
+          <div class="detail-label">反馈机制</div> 点击各词素色块后即时播放对应发音；整词播放后色块依次高亮
+          <div class="detail-label">理论依据</div> 词素意识（morphological awareness）；分块处理降低认知负荷
+        </div>
+      </div>
+
+      <div class="arrow">›</div>
+
+      <div class="node-card" id="n3" data-channels="visual listen" onclick="toggleNode('n3')">
+        <div class="node-head">
+          <div class="node-num">3</div>
+          <div class="node-title">形义联想+词族预览<span class="tag tag-optional">可选</span><span class="tag tag-new">新增</span></div>
+        </div>
+        <div class="channels">
+          <span class="channel ch-visual">视觉输入</span>
+          <span class="channel ch-listen">听力输入</span>
+        </div>
+        <div class="load-wrap">
+          <div class="load-bar"><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot"></div><div class="load-dot"></div><div class="load-dot"></div></div>
+          <span class="load-label">低</span>
+        </div>
+        <div class="scaffold full">● 全开脚手架（条件触发）</div>
+        <div class="node-detail">
+          <div class="detail-label">学生在做什么</div>
+          点击词素组件，观看视觉动画
+          <div class="upgrade-box">升级：动画结束后出现同词根 2 个相关词。如 "year" → yearly / New Year；"season" → seasonal / seasoning；点击各词听发音，建立初步词族意识。无需产出。</div>
+          <div class="detail-label">开口次数</div> <span class="speak-count">🔇 0次</span>
+          <div class="detail-label">反馈机制</div> 点击词族词汇后播放发音；词义动画自动呈现
+          <div class="detail-label">理论依据</div> Nation：词族网络建构；关联学习效应
+        </div>
+      </div>
+
+      <div class="arrow">›</div>
+
+      <div class="node-card" id="n4" data-channels="listen speak" onclick="toggleNode('n4')">
+        <div class="node-head">
+          <div class="node-num">4</div>
+          <div class="node-title">跟读确认+语调感知<span class="tag tag-upgrade">升级</span></div>
+        </div>
+        <div class="channels">
+          <span class="channel ch-listen">听力输入</span>
+          <span class="channel ch-speak">口语输出</span>
+        </div>
+        <div class="load-wrap">
+          <div class="load-bar"><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot"></div><div class="load-dot"></div><div class="load-dot"></div></div>
+          <span class="load-label">低</span>
+        </div>
+        <div class="scaffold full">● 全开脚手架</div>
+        <div class="node-detail">
+          <div class="detail-label">学生在做什么</div>
+          听完整发音后跟读
+          <div class="upgrade-box">升级：跟读后系统重播，学生注意语调标记（升/降调箭头可见），再跟读一次，共 2 次。</div>
+          <div class="detail-label">开口次数</div> <span class="speak-count">🗣 2次</span>
+          <div class="detail-label">反馈机制</div> 第一次跟读后系统重播+语调标注出现；第二次跟读后正向确认
+          <div class="detail-label">理论依据</div> Craik & Lockhart：三合一深度绑定；语调意识培养
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 第二段：词汇练习 -->
+  <div class="lane lane-practice" id="lane-practice">
+    <div class="lane-header" onclick="toggleLane('practice')">
+      <div class="phase-num">二</div>
+      词汇练习
+      <span style="font-weight:400;font-size:12px;opacity:.85;margin-left:4px;">节点 5–8 ｜ 全→部分脚手架 ｜ 低→中高认知负荷</span>
+      <span class="toggle-icon">▼</span>
+    </div>
+    <div class="lane-body" id="body-practice">
+
+      <div class="node-card" id="n5" data-channels="listen visual" onclick="toggleNode('n5')">
+        <div class="node-head">
+          <div class="node-num">5</div>
+          <div class="node-title">L1 形式-意义锚定<span class="tag tag-upgrade">升级</span></div>
+        </div>
+        <div class="channels">
+          <span class="channel ch-listen">听力输入</span>
+          <span class="channel ch-visual">视觉输入</span>
+        </div>
+        <div class="load-wrap">
+          <div class="load-bar"><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot"></div><div class="load-dot"></div><div class="load-dot"></div></div>
+          <span class="load-label">低</span>
+        </div>
+        <div class="scaffold full">● 全开脚手架</div>
+        <div class="node-detail">
+          <div class="detail-label">学生在做什么</div>
+          听单词，点击匹配图片
+          <div class="upgrade-box">升级：干扰项从"已知词"升级为"语义近邻词"。如听到 "festival"，干扰项为 holiday / birthday（同属特殊日子，需精细区分）。无文字。</div>
+          <div class="detail-label">开口次数</div> <span class="speak-count">🔇 0次</span>
+          <div class="detail-label">反馈机制</div> 正确高亮+发音重播；错误闪烁+正确图片高亮
+          <div class="detail-label">理论依据</div> Nation：意义聚焦输入；精细化辨别促进深度编码
+        </div>
+      </div>
+
+      <div class="arrow">›</div>
+
+      <div class="node-card" id="n6" data-channels="visual read" onclick="toggleNode('n6')">
+        <div class="node-head">
+          <div class="node-num">6</div>
+          <div class="node-title">L2 接受性提取+语义关系<span class="tag tag-upgrade">升级</span></div>
+        </div>
+        <div class="channels">
+          <span class="channel ch-visual">视觉输入</span>
+          <span class="channel ch-read">阅读输入</span>
+        </div>
+        <div class="load-wrap">
+          <div class="load-bar"><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot"></div><div class="load-dot"></div></div>
+          <span class="load-label">中</span>
+        </div>
+        <div class="scaffold full">● 全开脚手架</div>
+        <div class="node-detail">
+          <div class="detail-label">学生在做什么</div>
+          将图片/词卡拖入语义框架槽位
+          <div class="upgrade-box">升级：完成后从下拉菜单选择两词之间的关系类型。如将 year / season 拖入【时间单位】槽，将 birthday / festival 拖入【特殊日子】槽，再选关系类型：同类 / 对立 / 整体-部分。</div>
+          <div class="detail-label">开口次数</div> <span class="speak-count">🔇 0次</span>
+          <div class="detail-label">反馈机制</div> 拖入正确后卡片锁定；关系类型选择后显示标准答案对比
+          <div class="detail-label">理论依据</div> 关系性精细加工（relational elaboration）；元认知意识
+        </div>
+      </div>
+
+      <div class="arrow">›</div>
+
+      <div class="node-card" id="n7" data-channels="visual read speak" onclick="toggleNode('n7')">
+        <div class="node-head">
+          <div class="node-num">7</div>
+          <div class="node-title">L3 语义特征评估+口说<span class="tag tag-upgrade">升级</span></div>
+        </div>
+        <div class="channels">
+          <span class="channel ch-visual">视觉输入</span>
+          <span class="channel ch-read">阅读输入</span>
+          <span class="channel ch-speak">口语输出</span>
+        </div>
+        <div class="load-wrap">
+          <div class="load-bar"><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot"></div></div>
+          <span class="load-label">中高</span>
+        </div>
+        <div class="scaffold partial">◑ 部分撤除脚手架</div>
+        <div class="node-detail">
+          <div class="detail-label">学生在做什么</div>
+          按属性分类词卡或找异类词
+          <div class="upgrade-box">升级：分类后系统随机高亮一张词卡，学生用可见句框口说理由。如找出异类词 hometown，学生说："Hometown is different because it's a place, not a time."</div>
+          <div class="detail-label">开口次数</div> <span class="speak-count">🗣 1-2次</span>
+          <div class="detail-label">反馈机制</div> 分类结果即时高亮反馈；口说后系统播放范例句供对比
+          <div class="detail-label">理论依据</div> Involvement Load：评估触发深层记忆；输出促进形式注意
+        </div>
+      </div>
+
+      <div class="arrow">›</div>
+
+      <div class="node-card" id="n8" data-channels="visual read" onclick="toggleNode('n8')">
+        <div class="node-head">
+          <div class="node-num">8</div>
+          <div class="node-title">L3.5 语境识别+句义判断<span class="tag tag-upgrade">升级</span></div>
+        </div>
+        <div class="channels">
+          <span class="channel ch-visual">视觉输入</span>
+          <span class="channel ch-read">阅读输入</span>
+        </div>
+        <div class="load-wrap">
+          <div class="load-bar"><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot"></div><div class="load-dot"></div></div>
+          <span class="load-label">中</span>
+        </div>
+        <div class="scaffold partial">◑ 部分撤除脚手架</div>
+        <div class="node-detail">
+          <div class="detail-label">学生在做什么</div>
+          在已知句框中点击正确图片填槽
+          <div class="upgrade-box">升级：填完后出现两个相似句子做真假判断。如句框 "My favorite _____ is summer."，选 season 填入，随后判断：① My favorite season is summer. ✓ ② My favorite birthday is summer. ✗</div>
+          <div class="detail-label">开口次数</div> <span class="speak-count">🔇 0次</span>
+          <div class="detail-label">反馈机制</div> 填槽即时正误反馈；句义判断后显示错误原因标注
+          <div class="detail-label">理论依据</div> Schmidt：注意到形式；命题真值判断
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 第三段：词汇产出 -->
+  <div class="lane lane-output" id="lane-output">
+    <div class="lane-header" onclick="toggleLane('output')">
+      <div class="phase-num">三</div>
+      词汇产出
+      <span style="font-weight:400;font-size:12px;opacity:.85;margin-left:4px;">节点 9–11 ｜ 部分脚手架 ｜ 中→中高认知负荷</span>
+      <span class="toggle-icon">▼</span>
+    </div>
+    <div class="lane-body" id="body-output">
+
+      <div class="node-card" id="n9" data-channels="visual speak" onclick="toggleNode('n9')">
+        <div class="node-head">
+          <div class="node-num">9</div>
+          <div class="node-title">说-1 词块输出+搭配选择<span class="tag tag-upgrade">升级</span></div>
+        </div>
+        <div class="channels">
+          <span class="channel ch-visual">视觉输入</span>
+          <span class="channel ch-speak">口语输出</span>
+        </div>
+        <div class="load-wrap">
+          <div class="load-bar"><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot"></div><div class="load-dot"></div></div>
+          <span class="load-label">中</span>
+        </div>
+        <div class="scaffold partial">◑ 部分撤除脚手架</div>
+        <div class="node-detail">
+          <div class="detail-label">学生在做什么</div>
+          点击组合词块后朗读
+          <div class="upgrade-box">升级：每个目标词提供 2 组搭配选项，先判断哪组正确，确认后再朗读。如：① celebrate a birthday ✓ / ② make a birthday ✗；① in my hometown ✓ / ② on my hometown ✗</div>
+          <div class="detail-label">开口次数</div> <span class="speak-count">🗣 1-2次</span>
+          <div class="detail-label">反馈机制</div> 搭配选择后即时正误反馈+正确搭配高亮；朗读后系统播放范例
+          <div class="detail-label">理论依据</div> Lewis：词块作为意义单位；搭配意识培养
+        </div>
+      </div>
+
+      <div class="arrow">›</div>
+
+      <div class="node-card" id="n10" data-channels="listen speak visual" onclick="toggleNode('n10')">
+        <div class="node-head">
+          <div class="node-num">10</div>
+          <div class="node-title">说-2 生成说+语境扩展<span class="tag tag-upgrade">升级</span></div>
+        </div>
+        <div class="channels">
+          <span class="channel ch-listen">听力输入</span>
+          <span class="channel ch-speak">口语输出</span>
+          <span class="channel ch-visual">视觉输入</span>
+        </div>
+        <div class="load-wrap">
+          <div class="load-bar"><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot"></div></div>
+          <span class="load-label">中高</span>
+        </div>
+        <div class="scaffold partial">◑ 部分撤除脚手架</div>
+        <div class="node-detail">
+          <div class="detail-label">学生在做什么</div>
+          听范例句后说完整句
+          <div class="upgrade-box">升级：说完后屏幕出现追问，学生用部分可见句框再说一句扩展句。如听 "There are four seasons in my hometown."，追问 "Which season do you like?"，用句框 "I like ___ because ___." 扩展。</div>
+          <div class="detail-label">开口次数</div> <span class="speak-count">🗣 2-3次</span>
+          <div class="detail-label">反馈机制</div> 第一句说完后系统播放范例对比；扩展句说完后教师/系统确认
+          <div class="detail-label">理论依据</div> Swain：推动性输出；语境化词汇使用
+        </div>
+      </div>
+
+      <div class="arrow">›</div>
+
+      <div class="node-card" id="n11" data-channels="listen write read" onclick="toggleNode('n11')">
+        <div class="node-head">
+          <div class="node-num">11</div>
+          <div class="node-title">写-听音排序+词形验证<span class="tag tag-upgrade">升级</span></div>
+        </div>
+        <div class="channels">
+          <span class="channel ch-listen">听力输入</span>
+          <span class="channel ch-write">书面输出</span>
+          <span class="channel ch-read">阅读输入</span>
+        </div>
+        <div class="load-wrap">
+          <div class="load-bar"><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot"></div><div class="load-dot"></div></div>
+          <span class="load-label">中</span>
+        </div>
+        <div class="scaffold partial">◑ 部分撤除（较长词给首字母提示）</div>
+        <div class="node-detail">
+          <div class="detail-label">学生在做什么</div>
+          听发音，拖字母块拼写单词
+          <div class="upgrade-box">升级：拼写完成后出现例句，目标词空白，学生从 3 个选项中选择正确词形填入。如听 "festival"，拼写后例句 "We have many _____ in China."，选项：festival / festivals ✓ / festivaling。</div>
+          <div class="detail-label">开口次数</div> <span class="speak-count">🔇 0次</span>
+          <div class="detail-label">反馈机制</div> 拼写完成后变色确认；词形选择后即时正误反馈+例句完整呈现
+          <div class="detail-label">理论依据</div> Nation：音形对应自动化；词形变化意识
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 第四段：词汇总结 -->
+  <div class="lane lane-summary" id="lane-summary">
+    <div class="lane-header" onclick="toggleLane('summary')">
+      <div class="phase-num">四</div>
+      词汇总结
+      <span style="font-weight:400;font-size:12px;opacity:.85;margin-left:4px;">节点 12 ｜ 部分脚手架 ｜ 中高认知负荷</span>
+      <span class="toggle-icon">▼</span>
+    </div>
+    <div class="lane-body" id="body-summary">
+
+      <div class="node-card" id="n12" data-channels="visual read speak" onclick="toggleNode('n12')">
+        <div class="node-head">
+          <div class="node-num">12</div>
+          <div class="node-title">词汇关系图谱+口头标注<span class="tag tag-upgrade">升级</span></div>
+        </div>
+        <div class="channels">
+          <span class="channel ch-visual">视觉输入</span>
+          <span class="channel ch-read">阅读输入</span>
+          <span class="channel ch-speak">口语输出</span>
+        </div>
+        <div class="load-wrap">
+          <div class="load-bar"><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot"></div></div>
+          <span class="load-label">中高</span>
+        </div>
+        <div class="scaffold partial">◑ 部分撤除（分支结构预设，关系类型可选）</div>
+        <div class="node-detail">
+          <div class="detail-label">学生在做什么</div>
+          将词卡拖入思维导图叶节点（辐射型/场景型）
+          <div class="upgrade-box">升级：导图完成后点击任意连线，从下拉菜单选择关系类型，并口读完整关系句。如辐射型导图中心词 "time"，拖入 year / season / birthday / holiday；点击 year→season 连线，选 "is made up of"，口读："A year is made up of four seasons."</div>
+          <div class="detail-label">开口次数</div> <span class="speak-count">🗣 2-4次</span>
+          <div class="detail-label">反馈机制</div> 词卡拖入后锁定确认；关系类型选择后显示标准关系句；口读后系统播放范例
+          <div class="detail-label">理论依据</div> Nation：语义网络强化词汇间关联；关系性知识编码
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- 图例 -->
+<div class="legend">
+  <div class="legend-group">
+    <div class="legend-title">认知负荷</div>
+    <div class="legend-row"><div class="load-bar"><div class="load-dot filled"></div><div class="load-dot"></div><div class="load-dot"></div><div class="load-dot"></div><div class="load-dot"></div></div> 极低</div>
+    <div class="legend-row"><div class="load-bar"><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot"></div><div class="load-dot"></div><div class="load-dot"></div></div> 低</div>
+    <div class="legend-row"><div class="load-bar"><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot"></div><div class="load-dot"></div></div> 中</div>
+    <div class="legend-row"><div class="load-bar"><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot filled"></div><div class="load-dot"></div></div> 中高</div>
+  </div>
+  <div class="legend-group">
+    <div class="legend-title">脚手架状态</div>
+    <div class="legend-row"><span style="color:#1a78c2;font-weight:700;">●</span> 全开脚手架</div>
+    <div class="legend-row"><span style="color:#d4a017;font-weight:700;">◑</span> 部分撤除</div>
+  </div>
+  <div class="legend-group">
+    <div class="legend-title">输入/输出通道</div>
+    <div class="legend-row"><span class="channel ch-listen">听力输入</span></div>
+    <div class="legend-row"><span class="channel ch-visual">视觉输入</span></div>
+    <div class="legend-row"><span class="channel ch-read">阅读输入</span></div>
+    <div class="legend-row"><span class="channel ch-speak">口语输出</span></div>
+    <div class="legend-row"><span class="channel ch-write">书面输出</span></div>
+  </div>
+  <div class="legend-group">
+    <div class="legend-title">标签说明</div>
+    <div class="legend-row"><span class="tag tag-upgrade">升级</span> 相比原版有升级设计</div>
+    <div class="legend-row"><span class="tag tag-new">新增</span> 全新节点</div>
+    <div class="legend-row"><span class="tag tag-optional">可选</span> 条件触发，非必做</div>
+  </div>
+  <div class="legend-group" style="margin-left:auto;">
+    <div class="legend-title">使用提示</div>
+    <div class="legend-row">点击节点卡片 → 展开详情</div>
+    <div class="legend-row">点击段落标题 → 折叠/展开该段</div>
+    <div class="legend-row">顶部按钮 → 按通道筛选节点</div>
+  </div>
+</div>
+
+<script>
+  // 展开/折叠节点
+  function toggleNode(id) {
+    const card = document.getElementById(id);
+    card.classList.toggle('expanded');
+  }
+
+  // 折叠/展开泳道
+  function toggleLane(phase) {
+    const body   = document.getElementById('body-' + phase);
+    const header = body.previousElementSibling;
+    body.classList.toggle('collapsed');
+    header.classList.toggle('collapsed');
+  }
+
+  // 通道筛选
+  let activeFilter = 'all';
+  function filter(ch) {
+    activeFilter = ch;
+
+    // 更新按钮状态
+    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelector('.filter-btn.' + ch).classList.add('active');
+
+    // 筛选节点
+    document.querySelectorAll('.node-card').forEach(card => {
+      if (ch === 'all') {
+        card.classList.remove('dimmed');
+      } else {
+        const channels = card.dataset.channels || '';
+        if (channels.includes(ch)) {
+          card.classList.remove('dimmed');
+        } else {
+          card.classList.add('dimmed');
+          card.classList.remove('expanded');
+        }
+      }
+    });
+
+    // 筛选时自动展开所有泳道
+    if (ch !== 'all') {
+      ['present','practice','output','summary'].forEach(phase => {
+        const body = document.getElementById('body-' + phase);
+        const header = body.previousElementSibling;
+        body.classList.remove('collapsed');
+        header.classList.remove('collapsed');
+      });
+    }
+  }
+</script>
+</body>
+</html>
